@@ -26,7 +26,7 @@ public class WebController {
     @GetMapping("/web/index")
     public ModelAndView index() {
         ModelAndView modelAndView = new ModelAndView();
-        modelAndView.setViewName("index");
+        modelAndView.setViewName("home");
         return modelAndView;
     }
 

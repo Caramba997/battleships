@@ -11,6 +11,10 @@ class Section {
     console.warn('Init method for class missing');
   }
 
+  afterInit() {
+    Html.sectionLoadComplete();
+  }
+
   destroy() {
     console.warn('Destroy method for class missing');
   }
@@ -23,8 +27,15 @@ class Section {
 class API {
 
   static defaults = {
-    apiUrl: 'https://fc-battleships.herokuapp.com',
-    htmlUrl: 'https://fc-battleships.herokuapp.com/web/',
+    // apiHost: 'http://192.168.178.61:8080',
+    // htmlHost: 'http://192.168.178.61:5500',
+    //apiHost: 'http://localhost:8080',
+    //htmlHost: 'http://localhost:5500',
+    apiHost: 'https://fc-battleships.herokuapp.com',
+    htmlHost: 'https://fc-battleships.herokuapp.com',
+    htmlPrefix: '/',
+    // htmlSuffix: '.html',
+    htmlSuffix: '',
     headers: {
       'Content-Type': 'application/json'
     }
@@ -36,12 +47,12 @@ class API {
       const token = Cookies.get('token');
       if (!token) {
         console.error('Post error: No auth token present');
-        Html.loadPage('index');
+        Html.loadSection('home');
         return false;
       }
       headers['Authorization'] = 'Bearer ' + token;
     }
-    const response = await fetch(this.defaults.apiUrl + path, {
+    const response = await fetch(this.defaults.apiHost + path, {
       method: 'POST',
       body: JSON.stringify(data),
       headers: headers
@@ -67,7 +78,7 @@ class API {
       }
       headers['Authorization'] = 'Bearer ' + token;
     }
-    const response = await fetch(this.defaults.apiUrl + path, {
+    const response = await fetch(this.defaults.apiHost + path, {
       method: 'GET',
       headers: headers
     }).then((response) => {
@@ -84,11 +95,11 @@ class API {
 
   static resetAuth() {
     Cookies.set('token', '', '0ms');
-    Html.loadPage('login');
+    Html.loadSection('login');
   }
 
   static async html(path) {
-    const response = await fetch(this.defaults.htmlUrl + path, {
+    const response = await fetch(this.defaults.htmlHost + this.defaults.htmlPrefix + path + this.defaults.htmlSuffix, {
       method: 'GET'
     }).then((response) => {
       if (response.status === 200) return response.text();
@@ -117,17 +128,25 @@ class Html {
     return jsonData;
   }
 
-  static replaceBody(html) {
-    const body = html.substring(html.indexOf('<body>') + 6, html.indexOf('</body>'));
-    document.body.innerHTML = body;
-    document.dispatchEvent(new CustomEvent('bodyChange'));
+  static async loadSection(page) {
+    const loadingContainer = document.querySelector('#loading-container'),
+          sectionContainer = document.querySelector('#section-container');
+    sectionContainer.classList.add('loading');
+    sectionContainer.innerHTML = '';
+    loadingContainer.classList.add('loading');
+    const newHtml = await API.html(page),
+          newSection = newHtml.substring(newHtml.indexOf('<body>') + 6, newHtml.indexOf('</body>')),
+          tempHtml = document.createElement('DIV');
+    tempHtml.innerHTML = newSection;
+    sectionContainer.appendChild(tempHtml.children[0]);
+    document.dispatchEvent(new CustomEvent('sectionChange'));
   }
 
-  static async loadPage(page) {
-    const path = page,
-          html = await API.html(path);
-    Html.replaceBody(html);
-    history.pushState(path, '', API.defaults.htmlUrl + path);
+  static sectionLoadComplete() {
+    const loadingContainer = document.querySelector('#loading-container'),
+          sectionContainer = document.querySelector('#section-container');
+    loadingContainer.classList.remove('loading');
+    sectionContainer.classList.remove('loading');
   }
 
   static calcCssVariables() {
@@ -282,6 +301,212 @@ class Board {
 }
 
 /**
+ * Section for background
+ */
+class Background extends Section {
+
+  animations = [
+    {
+      name: 'WATER',
+      time: 10
+    },
+    {
+      name: 'LIFEBELT',
+      time: 10
+    },
+    {
+      name: 'SUNK',
+      time: 10
+    },
+    {
+      name: 'MISS',
+      time: 10
+    }
+  ];
+
+  init() {
+    console.info('Init Login Section');
+    this.interval = window.setInterval(this.randomAnimation.bind(this), 2000);
+  }
+
+  destroy() {
+    window.clearInterval(this.interval);
+  }
+
+  randomAnimation() {
+    const x = Math.floor(Math.random() * 16) + 1,
+          y = Math.floor(Math.random() * 9) + 1,
+          animation = Math.floor(Math.random() * 4),
+          field = this.element.querySelector(`#background-container tr:nth-of-type(${y}) td:nth-of-type(${x})`);
+    console.log(x, y, animation, field);
+    field.setAttribute('data-animation', this.animations[animation].name);
+    window.setTimeout(() => {
+      field.removeAttribute('data-animation');
+    }, this.animations[animation].time * 1000);
+  }
+
+}
+
+/**
+ * Section for index
+ */
+class Index extends Section {
+
+  async init() {
+    console.info('Init Index Section');
+    const player = await API.get('/api/players/refresh', true);
+    if (player) {
+      this.player = player;
+      this.processLoggedIn();
+    }
+    else {
+      this.element.querySelector('[data-state="loggedOut"]').classList.remove('d-none');
+    }
+
+    const logoutButton = this.element.querySelector('[data-action="logout"]');
+    logoutButton.addEventListener('click', this.logout.bind(this));
+    const loginButton = this.element.querySelector('[data-action="login"]');
+    loginButton.addEventListener('click', this.login.bind(this));
+    const signupButton = this.element.querySelector('[data-action="signup"]');
+    signupButton.addEventListener('click', this.signup.bind(this));
+    const startButton = this.element.querySelector('[data-action="start"]');
+    startButton.addEventListener('click', this.startGame.bind(this));
+    const refreshButton = this.element.querySelector('[data-action="refresh"]');
+    refreshButton.addEventListener('click', this.refresh.bind(this));
+    this.afterInit();
+  }
+
+  processLoggedIn() {
+    this.element.querySelector('[data-state="loggedIn"]').classList.remove('d-none');
+    this.element.querySelector('[data-var="username"]').innerText = this.player.username;
+    this.displayOpenRequests();
+    this.displayActiveGames();
+    this.displaySentRequests();
+    this.displayArchivedGames();
+  }
+
+  displayOpenRequests() {
+    const container = this.element.querySelector('[data-list="openRequests"]'),
+          requests = this.player.openRequests,
+          html = '<li data-challenger="{{challenger}}">Von {{challenger}}<button class="ml-1" data-action="acceptRequest">Annehmen</button><button class="ml-02" data-action="declineRequest">Ablehnen</button></li>';
+    let newHtml = '';
+    for (let i = requests.length - 1; i >= 0; i--) {
+      const tempHtml = html.replaceAll('{{challenger}}', requests[i].challenger);
+      newHtml += tempHtml;
+    }
+    if (newHtml !== '') container.innerHTML = newHtml;
+    const acceptButtons = container.querySelectorAll('[data-action="acceptRequest"]');
+    acceptButtons.forEach((button) => {
+      button.addEventListener('click', async (e) => {
+        const challenger = e.target.closest('[data-challenger]').getAttribute('data-challenger'),
+              response = await API.post('/api/players/acceptMatch', { target: challenger }, true);
+        if (response) {
+          Cookies.set('currentGame', response.id, '3d');
+          Html.loadSection('setup');
+        }
+      });
+    });
+    const declineButtons = container.querySelectorAll('[data-action="declineRequest"]');
+    declineButtons.forEach((button) => {
+      button.addEventListener('click', async (e) => {
+        const challenger = e.target.closest('[data-challenger]').getAttribute('data-challenger'),
+              response = await API.post('/api/players/declineMatch', { target: challenger }, true);
+        if (response) {
+          Html.loadSection('home');
+        }
+      });
+    });
+  }
+
+  displayActiveGames() {
+    const container = this.element.querySelector('[data-list="activeGames"]'),
+          games = this.player.activeGames,
+          html = '<li data-id="{{id}}" data-index="{{index}}"><div class=target></div> {{enemy}}<button class="ml-1" data-action="play">Spielen</button></li>';
+    let newHtml = '';
+    for (let i = games.length - 1; i >= 0; i--) {
+      let tempHtml = html.replaceAll('{{enemy}}', games[i].player2);
+      tempHtml = tempHtml.replaceAll('{{id}}', games[i].id);
+      tempHtml = tempHtml.replaceAll('{{index}}', i);
+      newHtml += tempHtml;
+    }
+    if (newHtml !== '') container.innerHTML = newHtml;
+    const playButtons = container.querySelectorAll('[data-action="play"]');
+    playButtons.forEach((button) => {
+      button.addEventListener('click', (e) => {
+        const id = e.target.closest('[data-id]').getAttribute('data-id'),
+              index = parseInt(e.target.closest('[data-index]').getAttribute('data-index'));
+        Cookies.set('currentGame', id, '3d');
+        if (games[index].board1.valid) {
+          Html.loadSection('game');
+        }
+        else {
+          Html.loadSection('setup');
+        }
+      });
+    });
+  }
+
+  displaySentRequests() {
+    const container = this.element.querySelector('[data-list="sentRequests"]'),
+          requests = this.player.sentRequests,
+          html = '<li data-target="{{target}}"><div class=target></div> {{target}}<button class="ml-1" data-action="deleteRequest">Löschen</button></li>';
+    let newHtml = '';
+    for (let i = requests.length - 1; i >= 0; i--) {
+      const tempHtml = html.replaceAll('{{target}}', requests[i].target);
+      newHtml += tempHtml;
+    }
+    if (newHtml !== '') container.innerHTML = newHtml;
+    const deleteButtons = container.querySelectorAll('[data-action="deleteRequest"]');
+    deleteButtons.forEach((button) => {
+      button.addEventListener('click', async (e) => {
+        const target = e.target.closest('[data-target]').getAttribute('data-target'),
+              response = await API.post('/api/players/deleteMatch', { target: target }, true);
+        if (response) {
+          Html.loadSection('home');
+        }
+      });
+    });
+  }
+
+  displayArchivedGames() {
+    const container = this.element.querySelector('[data-list="archivedGames"]'),
+          games = this.player.archiveGames,
+          html = '<li data-id="{{id}}"><div class=target></div> {{enemy}} - {{result}}</li>';
+    let newHtml = '';
+    for (let i = games.length - 1; i >= 0; i--) {
+      let tempHtml = html.replaceAll('{{enemy}}', games[i].player2);
+      tempHtml = tempHtml.replaceAll('{{id}}', games[i].id);
+      tempHtml = games[i].winner === games[i].player1 ? tempHtml.replaceAll('{{result}}', 'Sieg') : tempHtml.replaceAll('{{result}}', 'Niederlage');
+      newHtml += tempHtml;
+    }
+    if (newHtml !== '') container.innerHTML = newHtml;
+  }
+
+  logout() {
+    Cookies.set('token', '', '0ms');
+    this.element.querySelector('[data-state="loggedIn"]').classList.add('d-none');
+    this.element.querySelector('[data-state="loggedOut"]').classList.remove('d-none');
+  }
+
+  login() {
+    Html.loadSection('login');
+  }
+
+  signup() {
+    Html.loadSection('signup');
+  }
+
+  startGame() {
+    Html.loadSection('presetup');
+  }
+
+  refresh() {
+    Html.loadSection('home');
+  }
+
+}
+
+/**
  * Section for login
  */
 class Login extends Section {
@@ -294,6 +519,7 @@ class Login extends Section {
     passwordInput.addEventListener('keydown', this.enter.bind(this));
     const indexButton = this.element.querySelector('[data-action="index"]');
     indexButton.addEventListener('click', this.index.bind(this));
+    this.afterInit();
   }
 
   async login(event) {
@@ -303,7 +529,7 @@ class Login extends Section {
     errorElement.classList.remove('visible');
     if (response) {
       Cookies.set('token', response.token, `${response.tokenExpiration}ms`);
-      Html.loadPage('index');
+      Html.loadSection('home');
     }
     else {
       errorElement.classList.add('visible');
@@ -316,7 +542,7 @@ class Login extends Section {
   }
 
   index() {
-    Html.loadPage('index');
+    Html.loadSection('home');
   }
 
 }
@@ -341,6 +567,7 @@ class Signup extends Section {
     passwordInput.addEventListener('keydown', this.enter.bind(this));
     const indexButton = this.element.querySelector('[data-action="index"]');
     indexButton.addEventListener('click', this.index.bind(this));
+    this.afterInit();
   }
 
   async signup(event) {
@@ -375,174 +602,16 @@ class Signup extends Section {
   }
 
   login() {
-    Html.loadPage('login');
+    Html.loadSection('login');
   }
 
   index() {
-    Html.loadPage('index');
+    Html.loadSection('home');
   }
 
   enter(event) {
     if (event.keyCode !== 13) return;
-    this.signup(event);
-  }
-
-}
-
-/**
- * Section for index
- */
-class Index extends Section {
-
-  async init() {
-    console.info('Init Index Section');
-    const player = await API.get('/api/players/refresh', true);
-    if (player) {
-      this.player = player;
-      this.processLoggedIn();
-    }
-    else {
-      this.element.querySelector('[data-state="loggedOut"]').classList.remove('d-none');
-    }
-
-    const logoutButton = this.element.querySelector('[data-action="logout"]');
-    logoutButton.addEventListener('click', this.logout.bind(this));
-    const loginButton = this.element.querySelector('[data-action="login"]');
-    loginButton.addEventListener('click', this.login.bind(this));
-    const signupButton = this.element.querySelector('[data-action="signup"]');
-    signupButton.addEventListener('click', this.signup.bind(this));
-    const startButton = this.element.querySelector('[data-action="start"]');
-    startButton.addEventListener('click', this.startGame.bind(this));
-    const refreshButton = this.element.querySelector('[data-action="refresh"]');
-    refreshButton.addEventListener('click', this.refresh.bind(this));
-  }
-
-  processLoggedIn() {
-    this.element.querySelector('[data-state="loggedIn"]').classList.remove('d-none');
-    this.element.querySelector('[data-var="username"]').innerText = this.player.username;
-    this.displayOpenRequests();
-    this.displayActiveGames();
-    this.displaySentRequests();
-    this.displayArchivedGames();
-  }
-
-  displayOpenRequests() {
-    const container = this.element.querySelector('[data-list="openRequests"]'),
-          requests = this.player.openRequests,
-          html = '<li data-challenger="{{challenger}}">Von {{challenger}}<button class="ml-1" data-action="acceptRequest">Annehmen</button><button class="ml-02" data-action="declineRequest">Ablehnen</button></li>';
-    let newHtml = '';
-    for (let i = requests.length - 1; i >= 0; i--) {
-      const tempHtml = html.replaceAll('{{challenger}}', requests[i].challenger);
-      newHtml += tempHtml;
-    }
-    if (newHtml !== '') container.innerHTML = newHtml;
-    const acceptButtons = container.querySelectorAll('[data-action="acceptRequest"]');
-    acceptButtons.forEach((button) => {
-      button.addEventListener('click', async (e) => {
-        const challenger = e.target.closest('[data-challenger]').getAttribute('data-challenger'),
-              response = await API.post('/api/players/acceptMatch', { target: challenger }, true);
-        if (response) {
-          Cookies.set('currentGame', response.id, '3d');
-          Html.loadPage('setup');
-        }
-      });
-    });
-    const declineButtons = container.querySelectorAll('[data-action="declineRequest"]');
-    declineButtons.forEach((button) => {
-      button.addEventListener('click', async (e) => {
-        const challenger = e.target.closest('[data-challenger]').getAttribute('data-challenger'),
-              response = await API.post('/api/players/declineMatch', { target: challenger }, true);
-        if (response) {
-          Html.loadPage('index');
-        }
-      });
-    });
-  }
-
-  displayActiveGames() {
-    const container = this.element.querySelector('[data-list="activeGames"]'),
-          games = this.player.activeGames,
-          html = '<li data-id="{{id}}" data-index="{{index}}"><div class=target></div> {{enemy}}<button class="ml-1" data-action="play">Spielen</button></li>';
-    let newHtml = '';
-    for (let i = games.length - 1; i >= 0; i--) {
-      let tempHtml = html.replaceAll('{{enemy}}', games[i].player2);
-      tempHtml = tempHtml.replaceAll('{{id}}', games[i].id);
-      tempHtml = tempHtml.replaceAll('{{index}}', i);
-      newHtml += tempHtml;
-    }
-    if (newHtml !== '') container.innerHTML = newHtml;
-    const playButtons = container.querySelectorAll('[data-action="play"]');
-    playButtons.forEach((button) => {
-      button.addEventListener('click', (e) => {
-        const id = e.target.closest('[data-id]').getAttribute('data-id'),
-              index = parseInt(e.target.closest('[data-index]').getAttribute('data-index'));
-        Cookies.set('currentGame', id, '3d');
-        if (games[index].board1.valid) {
-          Html.loadPage('game');
-        }
-        else {
-          Html.loadPage('setup');
-        }
-      });
-    });
-  }
-
-  displaySentRequests() {
-    const container = this.element.querySelector('[data-list="sentRequests"]'),
-          requests = this.player.sentRequests,
-          html = '<li data-target="{{target}}"><div class=target></div> {{target}}<button class="ml-1" data-action="deleteRequest">Löschen</button></li>';
-    let newHtml = '';
-    for (let i = requests.length - 1; i >= 0; i--) {
-      const tempHtml = html.replaceAll('{{target}}', requests[i].target);
-      newHtml += tempHtml;
-    }
-    if (newHtml !== '') container.innerHTML = newHtml;
-    const deleteButtons = container.querySelectorAll('[data-action="deleteRequest"]');
-    deleteButtons.forEach((button) => {
-      button.addEventListener('click', async (e) => {
-        const target = e.target.closest('[data-target]').getAttribute('data-target'),
-              response = await API.post('/api/players/deleteMatch', { target: target }, true);
-        if (response) {
-          Html.loadPage('index');
-        }
-      });
-    });
-  }
-
-  displayArchivedGames() {
-    const container = this.element.querySelector('[data-list="archivedGames"]'),
-          games = this.player.archiveGames,
-          html = '<li data-id="{{id}}"><div class=target></div> {{enemy}} - {{result}}</li>';
-    let newHtml = '';
-    for (let i = games.length - 1; i >= 0; i--) {
-      let tempHtml = html.replaceAll('{{enemy}}', games[i].player2);
-      tempHtml = tempHtml.replaceAll('{{id}}', games[i].id);
-      tempHtml = games[i].winner === games[i].player1 ? tempHtml.replaceAll('{{result}}', 'Sieg') : tempHtml.replaceAll('{{result}}', 'Niederlage');
-      newHtml += tempHtml;
-    }
-    if (newHtml !== '') container.innerHTML = newHtml;
-  }
-
-  logout() {
-    Cookies.set('token', '', '0ms');
-    this.element.querySelector('[data-state="loggedIn"]').classList.add('d-none');
-    this.element.querySelector('[data-state="loggedOut"]').classList.remove('d-none');
-  }
-
-  login() {
-    Html.loadPage('login');
-  }
-
-  signup() {
-    Html.loadPage('signup');
-  }
-
-  startGame() {
-    Html.loadPage('presetup');
-  }
-
-  refresh() {
-    Html.loadPage('index');
+    this.login(event);
   }
 
 }
@@ -562,13 +631,14 @@ class Presetup extends Section {
     indexButton.addEventListener('click', this.index.bind(this));
     const playerInput = this.element.querySelector('input[name="target"]');
     playerInput.addEventListener('keydown', this.enter.bind(this));
+    this.afterInit();
   }
 
   async singleplayer() {
     const game = await API.get('/api/setup/singleplayer', true);
     if (game) {
       Cookies.set('currentGame', game.id, '3d');
-      Html.loadPage('setup');
+      Html.loadSection('setup');
     }
   }
 
@@ -594,7 +664,7 @@ class Presetup extends Section {
   }
 
   index() {
-    Html.loadPage('index');
+    Html.loadSection('home');
   }
 
 }
@@ -629,6 +699,7 @@ class Setup extends Section {
         field.addEventListener('click', this.placeShip.bind(this));
         field.addEventListener('mouseover', this.preview.bind(this));
       });
+      this.afterInit();
     }
     else {
       const buttons = this.element.querySelectorAll('button:not([data-action="start"])');
@@ -851,16 +922,16 @@ class Setup extends Section {
     if (this.game.state === 'SETUP') {
       const response = await API.post('/api/setup/start', { id: this.game.id, ships: this.game.board1.ships }, true);
       if (response) {
-        Html.loadPage('game');
+        Html.loadSection('game');
       }
     }
     else {
-      Html.loadPage('game');
+      Html.loadSection('game');
     }
   }
   
   index() {
-    Html.loadPage('index');
+    Html.loadSection('home');
   }
 
 }
@@ -892,6 +963,7 @@ class Game extends Section {
     surrenderButton.addEventListener('click', this.surrender.bind(this));
     const confirmSurrenderButton = this.element.querySelector('[data-action="confirmSurrender"]');
     confirmSurrenderButton.addEventListener('click', this.confirmSurrender.bind(this));
+    this.afterInit();
   }
 
   destroy() {
@@ -915,7 +987,6 @@ class Game extends Section {
 
   async fetchGame() {
     if ((this.game.turn === this.game.player1 && this.game.state === 'STARTED') || this.game.state === 'FINISHED' || this.game.state === 'CANCELLED') return;
-    console.info("Fetch game");
     const game = await API.post('/api/games/getActive', { id: this.id }, true);
     this.game = game;
     this.gameChanged();
@@ -1012,7 +1083,7 @@ class Game extends Section {
   }
 
   index() {
-    Html.loadPage('index');
+    Html.loadSection('home');
   }
 
 }
@@ -1023,9 +1094,10 @@ class Game extends Section {
 (function() {
 
   const availableSections = {
+    'Background': Background,
+    'Index': Index,
     'Login': Login,
     'Signup': Signup,
-    'Index': Index,
     'Setup': Setup,
     'Presetup': Presetup,
     'Game': Game
@@ -1040,17 +1112,22 @@ class Game extends Section {
     activeSections = [];
     const sections = document.querySelectorAll('[data-section]');
     sections.forEach((section) => {
-      const sectionClass = availableSections[section.getAttribute('data-section')];
+      const sectionName = section.getAttribute('data-section'),
+            sectionClass = availableSections[sectionName];
       if (sectionClass) {
         activeSections.push(new sectionClass(section));
       }
+      else {
+        console.warn('Unknow section: ' + sectionName);
+      }
     });
-  }
+  };
 
-  initSections();
-  document.addEventListener('bodyChange', initSections);
+  document.addEventListener('sectionLoadComplete', Html.sectionLoadComplete);
+  document.addEventListener('sectionChange', initSections);
+  window.addEventListener('resize', Html.calcCssVariables);
 
   Html.calcCssVariables();
-  window.addEventListener('resize', Html.calcCssVariables);
+  Html.loadSection('home');
 
 })();

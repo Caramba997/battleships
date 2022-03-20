@@ -24,6 +24,11 @@ html {
   color: var(--base-font-color);
 }
 
+body {
+  margin: 0;
+  overflow: hidden;
+}
+
 h2 {
   margin: 0;
 }
@@ -170,27 +175,21 @@ input:is([type="text"], [type="password"]) {
 
 /********** Background **********/
 
-.background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 100%;
+#background-container {
+  height: 100vh;
+  width: 100vw;
   overflow: hidden;
+  position: relative;
   background-color: var(--background-dark);
 }
 
-.background table {
-  position: relative;
-  display: block;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+#background-container table {
+  table-layout: fixed;
   border: none;
   border-spacing: 2px;
 }
 
-.background td {
+#background-container td {
   text-align: center;
   width: var(--background-field-size);
   min-width: var(--background-field-size);
@@ -198,7 +197,130 @@ input:is([type="text"], [type="password"]) {
   max-width: var(--background-field-size);
   position: relative;
   border: none;
+  border-radius: 10%;
   padding: 0;
+  overflow: hidden;
+  background-color: var(--water-color);
+}
+
+[data-animation], [data-animation]::before, [data-animation]::after {
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+[data-animation="WATER"]::before {
+  content: "";
+  width: 60%;
+  height: 60%;
+  position: absolute;
+  bottom: 0%;
+  left: -60%;
+  background-image: url(wave.png);
+  animation: b-wave 5s linear 1;
+}
+[data-animation="WATER"]::after {
+  content: "";
+  width: 60%;
+  height: 60%;
+  position: absolute;
+  bottom: 30%;
+  left: -60%;
+  background-image: url(wave.png);
+  animation: b-wave 5s linear 2s 1;
+}
+@keyframes b-wave {
+  0% { left: -60%; opacity: 0.5; height: 60%; }
+  33% { left: 0%; opacity: 0.3; height: 40%; }
+  66% { left: 50%; opacity: 0.6; height: 60%; }
+  100% { left: 100%; opacity: 0.3; height: 40%; }
+}
+
+[data-animation="LIFEBELT"]::before {
+  content: "";
+  width: 60%;
+  height: 60%;
+  position: absolute;
+  top: 20%;
+  left: -60%;
+  background-image: url(lifebelt.png);
+  animation: b-lifebelt 10s linear 1;
+}
+@keyframes b-lifebelt {
+  0% { left: -60%; top: 20%; }
+  33% { left: 0%; top: 30%; }
+  66% { left: 50%; top: 45%; }
+  100% { left: 100%; top: 70%;}
+}
+
+[data-animation="SUNK"]::before {
+  content: "";
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  background-image: url(shipwreck.png);
+  animation: b-sunk 10s ease-in-out 1;
+}
+@keyframes b-sunk {
+  0% { opacity: 0; }
+  25% { opacity: 0.3; }
+  50% { opacity: 0.5; }
+  75% { opacity: 0.4; }
+  100% { opacity: 0; }
+}
+
+[data-animation="MISS"]::before {
+  content: "";
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  background-image: url(miss.png);
+  animation: b-sunk 10s linear 1;
+}
+
+
+/********** Loading **********/
+
+#loading-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10vh;
+  height: 10vh;
+  background-color: var(--background-light);
+  border-radius: 5px;
+}
+
+#loading-container:not(.loading) {
+  display: none;
+}
+
+#loading-container::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 80%;
+  width: 2rem;
+  max-height: 80%;
+  height: 2rem;
+  content: "";
+  border: 0.2rem solid var(--background-light);
+  border-top: 0.2rem solid var(--background-dark);
+  border-left: 0.2rem solid var(--background-dark);
+  border-right: 0.2rem solid var(--background-dark);
+  border-radius: 50%;
+  animation: loading-circle 1s linear infinite;
+}
+@keyframes loading-circle {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
 
@@ -226,9 +348,18 @@ input:is([type="text"], [type="password"]) {
 }
 
 
-/** Pages **/
+/** Sections **/
 
-[data-section] {
+.section-wrapper {
+  width: 100vw;
+  height: 100vh;
+  top: 0;
+  left: 0;
+  position: absolute;
+  overflow: hidden;
+}
+
+#section-container {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -236,9 +367,18 @@ input:is([type="text"], [type="password"]) {
   border-radius: 5px;
   background-color: var(--background-light);
   padding: 20px;
-  max-height: 90%;
-  overflow-y: auto;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
   text-align: center;
+}
+
+#section-container.loading {
+  display: none;
+}
+
+[data-section] {
+  width: fit-content;
 }
 
 .target {
@@ -339,6 +479,7 @@ input:is([type="text"], [type="password"]) {
   text-align: center;
   width: var(--field-size);
   height: var(--field-size);
+  border-radius: 10%;
 }
 
 .board:not(.preview) tr td:first-of-type, .board th {
@@ -357,7 +498,6 @@ input:is([type="text"], [type="password"]) {
   background-repeat: no-repeat;
   background-size: contain;
   overflow: hidden;
-  border-radius: 10%;
 }
 
 [data-type="WATER"] {
@@ -390,14 +530,14 @@ input:is([type="text"], [type="password"]) {
   100% { left: 100%; opacity: 0.3; height: 40%; }
 }
 
-.board [data-type="SHIP"] {
+[data-type="SHIP"] {
   background-image: url(ship.png);
 }
 
-.board [data-type="HIT"] {
+[data-type="HIT"] {
   background-image: url(shipwreck.png);
 }
-.board [data-type="HIT"]::before {
+[data-type="HIT"]::before {
   content: "";
   width: 60%;
   height: 60%;
@@ -407,7 +547,7 @@ input:is([type="text"], [type="password"]) {
   background-image: url(fire1.png);
   animation: fire 1s ease-in infinite;
 }
-.board [data-type="HIT"]::after {
+[data-type="HIT"]::after {
   content: "";
   width: 60%;
   height: 60%;
@@ -422,10 +562,10 @@ input:is([type="text"], [type="password"]) {
   100% { height: 70%; left: 25%; }
 }
 
-.board [data-type="SUNK"] {
+[data-type="SUNK"] {
   background-image: url(shipwreck.png);
 }
-.board [data-type="SUNK"]::before {
+[data-type="SUNK"]::before {
   content: "";
   width: 100%;
   height: 100%;
@@ -433,13 +573,29 @@ input:is([type="text"], [type="password"]) {
   top: 0;
   left: 0;
   background-color: var(--water-color);
-  opacity: 0.25;
+  opacity: 0.5;
+}
+[data-type="SUNK"]::after {
+  content: "";
+  width: 60%;
+  height: 60%;
+  position: absolute;
+  top: 10%;
+  left: 5%;
+  background-image: url(lifebelt.png);
+  animation: lifebelt 4s ease-in-out infinite;
+}
+@keyframes lifebelt {
+  0% { left: 12%; top: 18%; }
+  33% { left: 9%; top: 14%; }
+  66% { left: 5%; top: 10%; }
+  100% { left: 10%; top: 20%; }
 }
 
-.board [data-type="MISS"] {
+[data-type="MISS"] {
   background-color: var(--water-color);
 }
-.board [data-type="MISS"]::before {
+[data-type="MISS"]::before {
   content: "";
   width: 105%;
   height: 105%;
@@ -447,14 +603,14 @@ input:is([type="text"], [type="password"]) {
   top: -3%;
   left: -5%;
   background-image: url(miss.png);
-  opacity: 0.25;
+  opacity: 0.5;
   animation: miss 4s ease-in infinite;
 }
 @keyframes miss {
-  0% { left: -3%; top: -5%; opacity: 1; }
-  33% { left: -1%; top: 0; opacity: 0.9; }
-  66% { left: 0; top: -2%; opacity: 0.8; }
-  100% { left: -3%; top: -5%; opacity: 1; }
+  0% { left: -3%; top: -5%; opacity: 0.5; }
+  33% { left: -1%; top: 0; opacity: 0.4; }
+  66% { left: 0; top: -2%; opacity: 0.25; }
+  100% { left: -3%; top: -5%; opacity: 0.5; }
 }
 
 .board [data-type="UNKNOWN"] {
