@@ -33,9 +33,10 @@ class API {
     //htmlHost: 'http://localhost:5500',
     apiHost: 'https://fc-battleships.herokuapp.com',
     htmlHost: 'https://fc-battleships.herokuapp.com',
-    htmlPrefix: '/',
-    // htmlSuffix: '.html',
+    htmlPrefix: '/web/',
     htmlSuffix: '',
+    // htmlPrefix: '/',
+    // htmlSuffix: '.html',
     headers: {
       'Content-Type': 'application/json'
     }
