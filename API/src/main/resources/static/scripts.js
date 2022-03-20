@@ -127,7 +127,7 @@ class Html {
     const path = page,
           html = await API.html(path);
     Html.replaceBody(html);
-    history.pushState(path, '', path);
+    history.pushState(path, '', API.defaults.htmlUrl + path);
   }
 
   static calcCssVariables() {
