@@ -1,13 +1,15 @@
 package fc.battleshipsapi.setup;
 
 import fc.battleshipsapi.game.*;
+import fc.battleshipsapi.ki.KIProperties;
 import fc.battleshipsapi.player.MatchRequest;
 import fc.battleshipsapi.player.Player;
 import fc.battleshipsapi.player.PlayerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
@@ -27,7 +29,7 @@ public class SetupService {
         if (player == null) return null;
         Game game = new Game();
         game.setPlayer1(player.getUsername());
-        Player enemy = playerService.getPlayerById("computer");
+        Player enemy = playerService.getPlayerById(KIProperties.ID);
         if (enemy == null) return null;
         game.setPlayer2(enemy.getUsername());
         Board playerBoard = boardService.createEmptyBoard();
@@ -36,7 +38,7 @@ public class SetupService {
         game.setBoard2(enemyBoard);
         game.setTurn(getRandomTurn(player.getUsername(), enemy.getUsername()));
         game.setState(State.SETUP);
-        game.setStartedAt(LocalDateTime.now());
+        game.setStartedAt(ZonedDateTime.now(ZoneId.of("Europe/Paris")));
         return gameService.finalizeGame(game, player, enemy);
     }
 
@@ -80,7 +82,7 @@ public class SetupService {
                 game.setBoard2(enemyBoard);
                 game.setTurn(getRandomTurn(player.getUsername(), enemy.getUsername()));
                 game.setState(State.SETUP);
-                game.setStartedAt(LocalDateTime.now());
+                game.setStartedAt(ZonedDateTime.now(ZoneId.of("Europe/Paris")));
                 gameService.finalizeGame(game, player, enemy);
                 success = openRequest;
                 id = game.getId();

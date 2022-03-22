@@ -3,7 +3,7 @@ package fc.battleshipsapi.player;
 import lombok.Data;
 
 import javax.validation.constraints.NotNull;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 
 @Data
 public class MatchRequest {
@@ -13,6 +13,6 @@ public class MatchRequest {
 
     private String challenger;
 
-    private LocalDateTime createdAt;
+    private ZonedDateTime createdAt;
 
 }

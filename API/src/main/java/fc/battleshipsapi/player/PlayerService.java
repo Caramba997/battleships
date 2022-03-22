@@ -2,6 +2,7 @@ package fc.battleshipsapi.player;
 
 import fc.battleshipsapi.game.Game;
 import fc.battleshipsapi.game.State;
+import fc.battleshipsapi.ki.KIProperties;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -12,10 +13,12 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 
 @Service
 @AllArgsConstructor
@@ -101,7 +104,49 @@ public class PlayerService implements UserDetailsService {
         Player enemy = getPlayerByUsername(request.getTarget());
         if (enemy == null) return null;
         request.setChallenger(player.getUsername());
-        request.setCreatedAt(LocalDateTime.now());
+        request.setCreatedAt(ZonedDateTime.now(ZoneId.of("Europe/Paris")));
+        player.getSentRequests().add(request);
+        playerRepository.save(player);
+        enemy.getOpenRequests().add(request);
+        playerRepository.save(enemy);
+        return request;
+    }
+
+    public MatchRequest randomMatch() {
+        Player player = getPlayerFromAuth();
+        if (player == null) return null;
+        List<Player> allPlayers = playerRepository.findAllUsernames();
+        List<String> allUsernames = new ArrayList<>();
+        for (Player fromAll: allPlayers) {
+            if (fromAll.getUsername().equals(KIProperties.USERNAME) || player.getUsername().equals(fromAll.getUsername()) || fromAll.getUsername().equals("Entwickler")) continue;
+            allUsernames.add(fromAll.getUsername());
+        }
+        for (MatchRequest sentRequest: player.getSentRequests()) {
+            if (allUsernames.contains(sentRequest.getTarget())) {
+                allUsernames.remove(sentRequest.getTarget());
+                continue;
+            }
+        }
+        for (MatchRequest openRequest: player.getOpenRequests()) {
+            if (allUsernames.contains(openRequest.getChallenger())) {
+                allUsernames.remove(openRequest.getChallenger());
+                continue;
+            }
+        }
+        for (Game activeGame: player.getActiveGames()) {
+            if (allUsernames.contains(activeGame.getPlayer2())) {
+                allUsernames.remove(activeGame.getPlayer2());
+                continue;
+            }
+        }
+        if (allUsernames.isEmpty()) return null;
+        int random = new Random().nextInt(allUsernames.size());
+        Player enemy = getPlayerByUsername(allUsernames.get(random));
+        if (enemy == null) return null;
+        MatchRequest request = new MatchRequest();
+        request.setChallenger(player.getUsername());
+        request.setTarget(enemy.getUsername());
+        request.setCreatedAt(ZonedDateTime.now(ZoneId.of("Europe/Paris")));
         player.getSentRequests().add(request);
         playerRepository.save(player);
         enemy.getOpenRequests().add(request);

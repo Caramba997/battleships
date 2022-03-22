@@ -9,7 +9,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -35,7 +36,7 @@ public class Player implements UserDetails {
 
     private List<Game> archiveGames;
 
-    private LocalDateTime createdAt;
+    private ZonedDateTime createdAt;
 
     public Player(String username, String password) {
         this.username = username;
@@ -44,7 +45,7 @@ public class Player implements UserDetails {
         this.openRequests = Collections.emptyList();
         this.activeGames = Collections.emptyList();
         this.archiveGames = Collections.emptyList();
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = ZonedDateTime.now(ZoneId.of("Europe/Paris"));
     }
 
     @Override

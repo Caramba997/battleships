@@ -45,6 +45,13 @@ public class PlayerController {
         return ResponseEntity.ok(match);
     }
 
+    @GetMapping("/randomMatch")
+    public ResponseEntity<?> randomMatch() {
+        MatchRequest match = playerService.randomMatch();
+        if (match == null) return ResponseEntity.badRequest().body("Error");
+        return ResponseEntity.ok(match);
+    }
+
     @PostMapping("/acceptMatch")
     public ResponseEntity<?> acceptMatch(@Valid @RequestBody MatchRequest request) {
         String id = setupService.acceptMatch(request);

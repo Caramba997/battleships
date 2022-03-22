@@ -29,14 +29,15 @@ class API {
   static defaults = {
     // apiHost: 'http://192.168.178.61:8080',
     // htmlHost: 'http://192.168.178.61:5500',
-    //apiHost: 'http://localhost:8080',
-    //htmlHost: 'http://localhost:5500',
+    // apiHost: 'http://localhost:8080',
+    // htmlHost: 'http://localhost:5500',
     apiHost: 'https://fc-battleships.herokuapp.com',
     htmlHost: 'https://fc-battleships.herokuapp.com',
     htmlPrefix: '/web/',
     htmlSuffix: '',
     // htmlPrefix: '/',
     // htmlSuffix: '.html',
+    version: 'v1.2',
     headers: {
       'Content-Type': 'application/json'
     }
@@ -339,7 +340,6 @@ class Background extends Section {
           y = Math.floor(Math.random() * 9) + 1,
           animation = Math.floor(Math.random() * 4),
           field = this.element.querySelector(`#background-container tr:nth-of-type(${y}) td:nth-of-type(${x})`);
-    console.log(x, y, animation, field);
     field.setAttribute('data-animation', this.animations[animation].name);
     window.setTimeout(() => {
       field.removeAttribute('data-animation');
@@ -351,10 +351,10 @@ class Background extends Section {
 /**
  * Section for index
  */
-class Index extends Section {
+class Home extends Section {
 
   async init() {
-    console.info('Init Index Section');
+    console.info('Init Home Section');
     const player = await API.get('/api/players/refresh', true);
     if (player) {
       this.player = player;
@@ -363,6 +363,8 @@ class Index extends Section {
     else {
       this.element.querySelector('[data-state="loggedOut"]').classList.remove('d-none');
     }
+
+    this.element.querySelector('[data-var="version"]').innerText = API.defaults.version;
 
     const logoutButton = this.element.querySelector('[data-action="logout"]');
     logoutButton.addEventListener('click', this.logout.bind(this));
@@ -422,7 +424,7 @@ class Index extends Section {
   displayActiveGames() {
     const container = this.element.querySelector('[data-list="activeGames"]'),
           games = this.player.activeGames,
-          html = '<li data-id="{{id}}" data-index="{{index}}"><div class=target></div> {{enemy}}<button class="ml-1" data-action="play">Spielen</button></li>';
+          html = '<li data-id="{{id}}" data-index="{{index}}"><div class="target"></div> {{enemy}}<button class="ml-1" data-action="play">Spielen</button></li>';
     let newHtml = '';
     for (let i = games.length - 1; i >= 0; i--) {
       let tempHtml = html.replaceAll('{{enemy}}', games[i].player2);
@@ -444,13 +446,15 @@ class Index extends Section {
           Html.loadSection('setup');
         }
       });
+      const index = parseInt(button.closest('[data-index]').getAttribute('data-index'));
+      if (games[index].state === 'STARTED' && games[index].turn === games[index].player1) button.setAttribute('data-turn', 'true');
     });
   }
 
   displaySentRequests() {
     const container = this.element.querySelector('[data-list="sentRequests"]'),
           requests = this.player.sentRequests,
-          html = '<li data-target="{{target}}"><div class=target></div> {{target}}<button class="ml-1" data-action="deleteRequest">Löschen</button></li>';
+          html = '<li data-target="{{target}}"><div class="target"></div> {{target}}<button class="ml-1" data-action="deleteRequest">Löschen</button></li>';
     let newHtml = '';
     for (let i = requests.length - 1; i >= 0; i--) {
       const tempHtml = html.replaceAll('{{target}}', requests[i].target);
@@ -472,7 +476,7 @@ class Index extends Section {
   displayArchivedGames() {
     const container = this.element.querySelector('[data-list="archivedGames"]'),
           games = this.player.archiveGames,
-          html = '<li data-id="{{id}}"><div class=target></div> {{enemy}} - {{result}}</li>';
+          html = '<li data-target="{{enemy}}" data-id="{{id}}"><div class="target"></div> {{enemy}} - {{result}}<button class="ml-1" data-action="rematch">Nochmal</button><div data-error="match" class="error ml-1">Fehler</div></li>';
     let newHtml = '';
     for (let i = games.length - 1; i >= 0; i--) {
       let tempHtml = html.replaceAll('{{enemy}}', games[i].player2);
@@ -481,6 +485,47 @@ class Index extends Section {
       newHtml += tempHtml;
     }
     if (newHtml !== '') container.innerHTML = newHtml;
+    const rematchButtons = container.querySelectorAll('[data-action="rematch"]');
+    rematchButtons.forEach((button) => {
+      const target = button.closest('[data-target]').getAttribute('data-target');
+      if (!this.rematchPossible(target)) {
+        button.classList.add('d-none');
+        return;
+      }
+      button.addEventListener('click', async (e) => {
+        const errorElement = e.target.parentElement.querySelector('[data-error="match"]'),
+              data = { target: e.target.closest('[data-target]').getAttribute('data-target') },
+              response = await API.post('/api/players/match', data, true);
+        if (response) {
+          this.refresh();
+        }
+        else {
+          errorElement.classList.add('visible');
+        }
+      });
+    });
+  }
+
+  rematchPossible(player) {
+    const openRequests = this.player.openRequests;
+    for (let i = 0; i < openRequests.length; i++) {
+      if (openRequests[i].challenger === player) {
+        return false;
+      }
+    }
+    const activeGames = this.player.activeGames;
+    for (let i = 0; i < activeGames.length; i++) {
+      if (activeGames[i].player2 === player) {
+        return false;
+      }
+    }
+    const sentRequests = this.player.sentRequests;
+    for (let i = 0; i < sentRequests.length; i++) {
+      if (sentRequests[i].target === player) {
+        return false;
+      }
+    }
+    return true;
   }
 
   logout() {
@@ -518,6 +563,8 @@ class Login extends Section {
     loginButton.addEventListener('click', this.login.bind(this));
     const passwordInput = this.element.querySelector('input[type="password"]');
     passwordInput.addEventListener('keydown', this.enter.bind(this));
+    const signupButton = this.element.querySelector('[data-action="signup"]');
+    signupButton.addEventListener('click', this.signup.bind(this));
     const indexButton = this.element.querySelector('[data-action="index"]');
     indexButton.addEventListener('click', this.index.bind(this));
     this.afterInit();
@@ -544,6 +591,10 @@ class Login extends Section {
 
   index() {
     Html.loadSection('home');
+  }
+
+  signup() {
+    Html.loadSection('signup');
   }
 
 }
@@ -628,6 +679,8 @@ class Presetup extends Section {
     singleplayerButton.addEventListener('click', this.singleplayer.bind(this));
     const multiplayerButton = this.element.querySelector('[data-action="multiplayer"]');
     multiplayerButton.addEventListener('click', this.multiplayer.bind(this));
+    const randomButton = this.element.querySelector('[data-action="random"]');
+    randomButton.addEventListener('click', this.random.bind(this));
     const indexButton = this.element.querySelector('[data-action="index"]');
     indexButton.addEventListener('click', this.index.bind(this));
     const playerInput = this.element.querySelector('input[name="target"]');
@@ -647,14 +700,29 @@ class Presetup extends Section {
     const successElement = this.element.querySelector('[data-success="match"]'),
           errorElement = this.element.querySelector('[data-error="match"]');
     successElement.classList.add('d-none');
-    errorElement.classList.add('d-none');
+    errorElement.classList.remove('visible');
     const data = Html.getFormAsObject(event.target.closest('form')),
           response = await API.post('/api/players/match', data, true);
     if (response) {
       successElement.classList.remove('d-none');
     }
     else {
-      errorElement.classList.remove('d-none');
+      errorElement.classList.add('visible');
+    }
+  }
+
+  async random() {
+    const successElement = this.element.querySelector('[data-success="random"]'),
+          errorElement = this.element.querySelector('[data-error="random"]');
+    successElement.classList.add('d-none');
+    errorElement.classList.remove('visible');
+    const response = await API.get('/api/players/randomMatch', true);
+    if (response) {
+      successElement.classList.remove('d-none');
+      successElement.querySelector('[data-var="enemy"]').innerText = response.target;
+    }
+    else {
+      errorElement.classList.add('visible');
     }
   }
 
@@ -989,8 +1057,10 @@ class Game extends Section {
   async fetchGame() {
     if ((this.game.turn === this.game.player1 && this.game.state === 'STARTED') || this.game.state === 'FINISHED' || this.game.state === 'CANCELLED') return;
     const game = await API.post('/api/games/getActive', { id: this.id }, true);
-    this.game = game;
-    this.gameChanged();
+    if (game) {
+      this.game = game;
+      this.gameChanged();
+    }
   }
 
   shotPreview(event) {
@@ -1096,7 +1166,7 @@ class Game extends Section {
 
   const availableSections = {
     'Background': Background,
-    'Index': Index,
+    'Home': Home,
     'Login': Login,
     'Signup': Signup,
     'Setup': Setup,

@@ -4,7 +4,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 
 @Data
 @NoArgsConstructor
@@ -27,9 +27,9 @@ public class Game {
 
     private String winner;
 
-    private LocalDateTime startedAt;
+    private ZonedDateTime startedAt;
 
-    private LocalDateTime finishedAt;
+    private ZonedDateTime finishedAt;
 
     public Game(Game game) {
         this.id = game.getId();

@@ -1,22 +1,24 @@
 package fc.battleshipsapi;
 
-import fc.battleshipsapi.login.LoginRequest;
-import fc.battleshipsapi.login.LoginResponse;
+import fc.battleshipsapi.ki.KIProperties;
 import fc.battleshipsapi.login.LoginService;
+import fc.battleshipsapi.mongo.ZonedDateTimeReadConverter;
+import fc.battleshipsapi.mongo.ZonedDateTimeWriteConverter;
 import fc.battleshipsapi.player.Player;
 import fc.battleshipsapi.player.PlayerRepository;
-import fc.battleshipsapi.player.PlayerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import java.util.Optional;
+import java.util.Arrays;
 
 @SpringBootApplication
 @Slf4j
@@ -29,9 +31,9 @@ public class BattleshipsApiApplication {
     @Bean
     CommandLineRunner createUsers(PlayerRepository repository, LoginService service) {
         return args -> {
-            if (repository.findById("computer").isEmpty()) {
-                Player ki = new Player("KI-Gegner", "Forbidden");
-                ki.setId("computer");
+            if (repository.findById(KIProperties.ID).isEmpty()) {
+                Player ki = new Player(KIProperties.USERNAME, "Forbidden");
+                ki.setId(KIProperties.ID);
                 repository.insert(ki);
 
                 log.info("[boot] Created computer player");
@@ -52,6 +54,18 @@ public class BattleshipsApiApplication {
                 registry.addMapping("/**");
             }
         };
+    }
+
+    @Configuration
+    public class Converters {
+
+        @Bean
+        public MongoCustomConversions mongoCustomConversions() {
+            return new MongoCustomConversions(
+                    Arrays.asList(
+                            new ZonedDateTimeReadConverter(),
+                            new ZonedDateTimeWriteConverter()));
+        }
     }
 
 }

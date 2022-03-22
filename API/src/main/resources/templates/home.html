@@ -2,7 +2,11 @@
 <html>
   <head></head>
   <body>
-    <div data-section="Index">
+    <div data-section="Home">
+      <div class="image-wrapper" style="width: 20rem; height: 3rem;">
+        <div data-image="logo"></div>
+      </div>
+      <hr class="mb-1">
       <div data-state="loggedIn" class="flex-column ta-center d-none">
         <h2 class="mb-1">Willkommen, <span data-var="username">?</span></h2>
         <div class="button-wrapper">
@@ -14,29 +18,33 @@
         <div>
           <h3>Offene Spielanfragen</h3>
           <ul data-list="openRequests">
+            <li>Keine</li>
           </ul>
         </div>
         <hr>
         <div>
           <h3>Aktive Spiele</h3>
           <ul data-list="activeGames">
+            <li>Keine</li>
           </ul>
         </div>
         <hr>
         <div>
           <h3>Gesendete Spielanfragen</h3>
           <ul data-list="sentRequests">
+            <li>Keine</li>
           </ul>
         </div>
         <hr>
         <div>
           <h3>Beendete Spiele</h3>
           <ul data-list="archivedGames">
+            <li>Keine</li>
           </ul>
         </div>
         <hr>
         <div class="button-wrapper">
-          <button data-action="logout">Logout</button>
+          <button data-action="logout">Abmelden</button>
         </div>
       </div>
       <div data-state="loggedOut" class="flex-column ta-center d-none">
@@ -48,6 +56,7 @@
           <button data-action="signup" class="mb-1">Registrieren</button>
         </div>
       </div>
+      <div data-var="version"></div>
     </div>
   </body>
 </html>

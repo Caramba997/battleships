@@ -6,7 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -126,7 +127,7 @@ public class GameService {
         if (allSunk) {
             game.setState(State.FINISHED);
             game.setWinner(game.getPlayer2());
-            game.setFinishedAt(LocalDateTime.now());
+            game.setFinishedAt(ZonedDateTime.now(ZoneId.of("Europe/Paris")));
         }
         allSunk = true;
         for (Ship ship: game.getBoard2().getShips()) {
@@ -138,7 +139,7 @@ public class GameService {
         if (allSunk) {
             game.setState(State.FINISHED);
             game.setWinner(game.getPlayer1());
-            game.setFinishedAt(LocalDateTime.now());
+            game.setFinishedAt(ZonedDateTime.now(ZoneId.of("Europe/Paris")));
         }
     }
 
@@ -162,16 +163,22 @@ public class GameService {
     private Game modifyGameForPlayer(Game game, Player player) {
         Game modifiedGame = new Game(game);
         if (game.getPlayer1().equals(player.getUsername())) {
-            modifiedGame.setBoard2(modifyBoardForPlayer(modifiedGame.getBoard2()));
+            if (!game.getState().equals(State.FINISHED) && !game.getState().equals(State.CANCELLED)) {
+                modifiedGame.setBoard2(modifyBoardForPlayer(modifiedGame.getBoard2()));
+            }
         }
         else {
-            Board board2 = modifyBoardForPlayer(modifiedGame.getBoard1());
+            Board board2 = modifiedGame.getBoard1();
+            if (!game.getState().equals(State.FINISHED) && !game.getState().equals(State.CANCELLED)) {
+                board2 = modifyBoardForPlayer(board2);
+            }
             modifiedGame.setBoard1(modifiedGame.getBoard2());
             modifiedGame.setBoard2(board2);
             String player2 = modifiedGame.getPlayer1();
             modifiedGame.setPlayer1(modifiedGame.getPlayer2());
             modifiedGame.setPlayer2(player2);
         }
+        ZonedDateTime zn = ZonedDateTime.now(ZoneId.of("Europe/Paris"));
         Game oldGame = null;
         for (Game activeGame: player.getActiveGames()) {
             if (activeGame.getId().equals(game.getId())) {

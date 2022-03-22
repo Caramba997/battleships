@@ -11,6 +11,7 @@
         </div>
       </div>
       <hr class="mb-1">
+      <h3 class="">Bestimmter Gegner</h3>
       <form class="flex-column">
         <div class="m-auto mb-02">
           <label for="username" class="hint">Nutzernamen eingeben</label>
@@ -19,13 +20,19 @@
           <input class="ta-center" type="text" name="target">
         </div>
         <div class="m-auto mb-1">
-          <input type="button" data-action="multiplayer" value="Gegen Spieler">
+          <input type="button" data-action="multiplayer" value="Anfrage senden">
         </div>
         <div class="m-auto">
-          <div data-success="match" class="d-none">Anfrage erfolgreich versendet</div>
-          <div data-error="match" class="d-none">Anfrage konnte nicht gesendet werden. Entweder hast du bereits eine offene Anfrage oder der Spieler existiert nicht.</div>
+          <div data-success="match" class="d-none">Anfrage erfolgreich versendet. Sobald dein Gegner sie angenommen hat erscheint das Spiel auf deiner Startseite.</div>
+          <div data-error="match" class="error">Anfrage konnte nicht gesendet werden. Mögliche Ursachen: Ihr spielt bereits, es existiert schon eine Anfrage oder der Spieler existiert nicht.</div>
         </div>
       </form>
+      <h3 class="mb-15">oder</h3>
+      <button data-action="random" class="mb-1">Zufälliger Gegner</button>
+      <div class="m-auto">
+        <div data-success="random" class="d-none">Anfrage an <span data-var="enemy"></span> versendet. Sobald dein Gegner sie angenommen hat erscheint das Spiel auf deiner Startseite.</div>
+        <div data-error="random" class="error">Anfrage konnte nicht gesendet werden. Möglicherweise gibt es keinen Spieler gegen den du noch nicht spielst.</div>
+      </div>
       <hr class="mb-1">
       <button data-action="index">Zurück zum Hauptmenü</button>
     </div>
