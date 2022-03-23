@@ -2,7 +2,7 @@
 <html>
   <head></head>
   <body>
-    <div data-section="Game">
+    <div data-section="Archive">
       <div class="flex flex-evenly mb-1">
         <div class="flex-column">
           <h3>Deine Flotte</h3>
@@ -301,20 +301,42 @@
           </table>
         </div>
       </div>
-      <div class="flex flex-between flex-align-center">
+      <div class="flex-column flex-align-center">
+        <div data-var="winner" class="mb-1"></div>
+        <div class="mb-1">Spieldauer:<span data-var="time" class="ml-1">00:00</span></div>
+        <table class="stats mb-1">
+          <tr>
+            <th></th>
+            <th>Du</th>
+            <th>Gegner</th>
+          </tr>
+          <tr>
+            <td>Schüsse</td>
+            <td data-var="shots1"></td>
+            <td data-var="shots2"></td>
+          </tr>
+          <tr>
+            <td>Treffer</td>
+            <td data-var="hits1"></td>
+            <td data-var="hits2"></td>
+          </tr>
+          <tr>
+            <td>Fehlschüsse</td>
+            <td data-var="misses1"></td>
+            <td data-var="misses2"></td>
+          </tr>
+          <tr>
+            <td>Trefferrate</td>
+            <td data-var="ratio1"></td>
+            <td data-var="ratio2"></td>
+          </tr>
+          <tr>
+            <td>Versenkt</td>
+            <td data-var="sunk1"></td>
+            <td data-var="sunk2"></td>
+          </tr>
+        </table>
         <button data-action="index">Hauptmenü</button>
-        <div data-var="turn"></div>
-        <div class="flex-column">
-          <span data-var="time">00:00:00:00</span>
-          <button data-action="surrender">Aufgeben</button>
-        </div>
-      </div>
-      <div class="modal" data-modal="surrender" data-visible="false">
-        <button data-action="close">X</button>
-        <div class="flex-column flex-align-center">
-          <div class="mb-1">Willst du wirklich aufgeben?</div>
-          <button data-action="confirmSurrender">Aufgeben</button>
-        </div>
       </div>
     </div>
   </body>

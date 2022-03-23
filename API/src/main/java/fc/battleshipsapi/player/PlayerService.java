@@ -77,17 +77,6 @@ public class PlayerService implements UserDetailsService {
 
     public Player refreshPlayer() {
         Player player = getPlayerFromAuth();
-        List<Game> finishedGames = new ArrayList<>();
-        for (Game game: player.getActiveGames()) {
-            if (game.getState().equals(State.FINISHED) ||game.getState().equals(State.CANCELLED)) {
-                finishedGames.add(game);
-            }
-        }
-        for (Game game: finishedGames) {
-            player.getActiveGames().remove(game);
-            player.getArchiveGames().add(game);
-        }
-        save(player);
         return player;
     }
 
@@ -100,6 +89,9 @@ public class PlayerService implements UserDetailsService {
         }
         for (MatchRequest openRequests: player.getOpenRequests()) {
             if (openRequests.getChallenger().equals(request.getTarget())) return null;
+        }
+        for (Game game: player.getActiveGames()) {
+            if (game.getPlayer2().equals(request.getTarget())) return null;
         }
         Player enemy = getPlayerByUsername(request.getTarget());
         if (enemy == null) return null;

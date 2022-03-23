@@ -146,6 +146,9 @@ input:is([type="text"], [type="password"]) {
 .ml-2 {
   margin-left: 2rem;
 }
+.mr-1 {
+  margin-right: 1rem;
+}
 .mb-02 {
   margin-bottom: 0.2rem;
 }
@@ -387,7 +390,7 @@ input:is([type="text"], [type="password"]) {
   transform: translate(-50%, -50%);
   border-radius: 5px;
   background-color: var(--background-light);
-  padding: 20px;
+  padding: 1rem;
   max-width: 90vw;
   max-height: 90vh;
   overflow: auto;
@@ -424,6 +427,10 @@ input:is([type="text"], [type="password"]) {
   top: 5px;
   right: 5px;
   font-size: 0.7rem;
+}
+
+[data-section="Home"] :is([data-action="more"], [data-action="less"]) {
+  background: none;
 }
 
 
@@ -529,7 +536,7 @@ input:is([type="text"], [type="password"]) {
 }
 
 .board:not(.preview) tr td:first-of-type, .board th {
-  font-size: 16px;
+  font-size: min(1.2rem, var(--field-size) - 3px);
   font-weight: 700;
   width: var(--field-size);
   height: var(--field-size);
@@ -675,4 +682,28 @@ input:is([type="text"], [type="password"]) {
 
 .board [data-target="invalid"] {
   opacity: 0.5;
+}
+
+[data-section="Game"] [data-var="time"] {
+  font-size: 0.7rem;
+}
+
+[data-section="Game"] [data-action="surrender"] {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.3rem;
+}
+
+
+/********** Archive **********/
+
+table.stats {
+  font-size: 0.8rem;
+}
+
+table.stats tr td:not(:first-of-type) {
+  padding: 0 0.5rem;
+}
+
+table.stats tr td:first-of-type {
+  font-weight: bold;
 }

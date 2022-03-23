@@ -31,13 +31,13 @@ class API {
     // htmlHost: 'http://192.168.178.61:5500',
     // apiHost: 'http://localhost:8080',
     // htmlHost: 'http://localhost:5500',
+    // htmlPrefix: '/',
+    // htmlSuffix: '.html',
     apiHost: 'https://fc-battleships.herokuapp.com',
     htmlHost: 'https://fc-battleships.herokuapp.com',
     htmlPrefix: '/web/',
     htmlSuffix: '',
-    // htmlPrefix: '/',
-    // htmlSuffix: '.html',
-    version: 'v1.2',
+    version: 'v1.3',
     headers: {
       'Content-Type': 'application/json'
     }
@@ -200,6 +200,28 @@ class Html {
     const modal = document.querySelector(`[data-modal="${name}"]`);
     if (!modal) return;
     modal.setAttribute('data-visible', 'false');
+  }
+
+  static calcTime(date1, date2) {
+    var padZeros = function(number) {
+      let string = '' + number;
+      while (string.length < 2) {
+        string = '0' + string;
+      }
+      return string;
+    }
+    const seconds = 1000,
+          minutes = seconds * 60,
+          hours = minutes * 60,
+          days = hours * 24;
+    const startDate = date1.getTime(),
+          endDate = date2.getTime(),
+          diff = endDate - startDate,
+          diffSeconds = Math.floor(diff % minutes / seconds),
+          diffMinutes = Math.floor(diff % hours / minutes),
+          diffHours = Math.floor(diff % days / hours),
+          diffDays = Math.floor(diff / days);
+    return `${padZeros(diffDays)}:${padZeros(diffHours)}:${padZeros(diffMinutes)}:${padZeros(diffSeconds)}`;
   }
 
 }
@@ -447,7 +469,7 @@ class Home extends Section {
         }
       });
       const index = parseInt(button.closest('[data-index]').getAttribute('data-index'));
-      if (games[index].state === 'STARTED' && games[index].turn === games[index].player1) button.setAttribute('data-turn', 'true');
+      if ((games[index].state === 'STARTED' && games[index].turn === games[index].player1) || (games[index].state === 'SETUP' && !games[index].board1.valid)) button.setAttribute('data-turn', 'true');
     });
   }
 
@@ -476,7 +498,7 @@ class Home extends Section {
   displayArchivedGames() {
     const container = this.element.querySelector('[data-list="archivedGames"]'),
           games = this.player.archiveGames,
-          html = '<li data-target="{{enemy}}" data-id="{{id}}"><div class="target"></div> {{enemy}} - {{result}}<button class="ml-1" data-action="rematch">Nochmal</button><div data-error="match" class="error ml-1">Fehler</div></li>';
+          html = '<li data-target="{{enemy}}" data-id="{{id}}"><div class="target"></div> {{enemy}} - {{result}}<button class="ml-1" data-action="archive">&#128269;</button><button class="ml-02" data-action="rematch">Nochmal</button><div data-error="match" class="error ml-1">Fehler</div></li>';
     let newHtml = '';
     for (let i = games.length - 1; i >= 0; i--) {
       let tempHtml = html.replaceAll('{{enemy}}', games[i].player2);
@@ -504,6 +526,37 @@ class Home extends Section {
         }
       });
     });
+    const archiveButtons = container.querySelectorAll('[data-action="archive"]');
+    archiveButtons.forEach((button) => {
+      button.addEventListener('click', async (e) => {
+        const id = e.target.closest('[data-id]').getAttribute('data-id');
+        Cookies.set('currentGame', id, '3d');
+        Html.loadSection('archive');
+      });
+    });
+    const archiveItems = container.querySelectorAll('li');
+    if (archiveItems.length > 5) {
+      const moreButton = this.element.querySelector('[data-action="more"]'),
+            lessButton = this.element.querySelector('[data-action="less"]');
+      moreButton.classList.remove('d-none');
+      for (let i = 5; i < archiveItems.length; i++) {
+        archiveItems[i].classList.add('d-none');
+      }
+      moreButton.addEventListener('click', () => {
+        for (let i = 5; i < archiveItems.length; i++) {
+          archiveItems[i].classList.remove('d-none');
+          moreButton.classList.add('d-none');
+          lessButton.classList.remove('d-none');
+        }
+      });
+      lessButton.addEventListener('click', () => {
+        for (let i = 5; i < archiveItems.length; i++) {
+          archiveItems[i].classList.add('d-none');
+          lessButton.classList.add('d-none');
+          moreButton.classList.remove('d-none');
+        }
+      });
+    }
   }
 
   rematchPossible(player) {
@@ -1025,6 +1078,7 @@ class Game extends Section {
       field.addEventListener('mouseover', this.shotPreview.bind(this));
     });
     this.gameChanged();
+    this.initTime();
     this.fetchLoop = window.setInterval(this.fetchGame.bind(this), 2000);
     const indexButton = this.element.querySelector('[data-action="index"]');
     indexButton.addEventListener('click', this.index.bind(this));
@@ -1036,7 +1090,12 @@ class Game extends Section {
   }
 
   destroy() {
-    window.clearInterval(this.fetchLoop);
+    if (this.fetchLoop) {
+      window.clearInterval(this.fetchLoop);
+    }
+    if (this.timeLoop) {
+      window.clearInterval(this.timeLoop);
+    }
   }
 
   async shoot(event) {
@@ -1092,20 +1151,28 @@ class Game extends Section {
   gameChanged() {
     this.clearShotPreview();
     this.getTurn();
-    this.initTime();
     Board.fill(this.player1Element, this.game.board1.board);
     Board.fill(this.player2Element, this.game.board2.board);
   }
 
   getTurn() {
     const turnElement = this.element.querySelector('[data-var="turn"]');
-    if (this.game.winner === this.game.player1) {
+    let finished = false;
+    if (this.game.winner === this.game.player1 && this.game.turn === this.game.player2) {
+      turnElement.innerText = 'Dein Gegner hat aufgegeben!';
+      finished = true;
+    }
+    else if (this.game.winner === this.game.player1) {
       turnElement.innerText = 'Du hast gewonnen!';
-      this.element.querySelector('[data-action="surrender"]').setAttribute('data-enabled', 'false');
+      finished = true;
+    }
+    else if (this.game.winner === this.game.player2 && this.game.turn === this.game.player1) {
+      turnElement.innerText = 'Du hast aufgegeben!';
+      finished = true;
     }
     else if (this.game.winner === this.game.player2) {
       turnElement.innerText = 'Du hast verloren!';
-      this.element.querySelector('[data-action="surrender"]').setAttribute('data-enabled', 'false');
+      finished = true;
     }
     else if (!this.game.board2.valid) {
       turnElement.innerText = 'Die Flotte deines Gegners ist noch nicht bereit.';
@@ -1116,28 +1183,21 @@ class Game extends Section {
     else if (this.game.turn === this.game.player2) {
       turnElement.innerText = 'Warten auf Gegner...';
     }
+    if (finished) {
+      this.element.querySelector('[data-action="surrender"]').setAttribute('data-enabled', 'false');
+      this.destroy();
+      Html.loadSection('archive');
+    }
   }
 
   initTime() {
-    var padZeros = function(number) {
-      let string = '' + number;
-      while (string.length < 2) {
-        string = '0' + string;
-      }
-      return string;
-    }
-    const seconds = 1000,
-          minutes = seconds * 60,
-          hours = minutes * 60,
-          days = hours * 24;
-    const startDate = new Date(this.game.startedAt).getTime(),
-          endDate = this.game.finishedAt ? new Date(this.game.finishedAt).getTime() : new Date().getTime(),
-          diff = endDate - startDate,
-          diffMinutes = Math.floor(diff % hours / minutes),
-          diffHours = Math.floor(diff % days / hours),
-          diffDays = Math.floor(diff / days),
-          timeString = `${padZeros(diffDays)}:${padZeros(diffHours)}:${padZeros(diffMinutes)}`;
-    this.element.querySelector('[data-var="time"]').innerText = timeString;
+    this.startDate = new Date(this.game.startedAt);
+    const endDate = new Date();
+    this.element.querySelector('[data-var="time"]').innerText = Html.calcTime(this.startDate, endDate);
+    this.timeLoop = window.setInterval(() => {
+      const endDate = new Date();
+      this.element.querySelector('[data-var="time"]').innerText = Html.calcTime(this.startDate, endDate);
+    }, 1000);
   }
 
   surrender() {
@@ -1160,6 +1220,97 @@ class Game extends Section {
 }
 
 /**
+ * Section for archive
+ */
+class Archive extends Section {
+
+  async init() {
+    console.info('Init Archive Section');
+    this.id = Cookies.get('currentGame');
+    const game = await API.post('/api/games/getArchived', { id: this.id }, true);
+    if (!game) return;
+    this.game = game;
+    this.player1Element = this.element.querySelector('.board[data-player="1"]');
+    this.player2Element = this.element.querySelector('.board[data-player="2"]');
+    this.showStatistics();
+    const indexButton = this.element.querySelector('[data-action="index"]');
+    indexButton.addEventListener('click', this.index.bind(this));
+    this.afterInit();
+  }
+
+  showStatistics() {
+    this.getWinner();
+    this.initTime();
+    this.calcStatistics(this.game.board1, 2);
+    this.calcStatistics(this.game.board2, 1);
+    Board.fill(this.player1Element, this.game.board1.board);
+    Board.fill(this.player2Element, this.game.board2.board);
+  }
+
+  getWinner() {
+    const turnElement = this.element.querySelector('[data-var="winner"]');
+    if (this.game.winner === this.game.player1 && this.game.turn === this.game.player2) {
+      turnElement.innerText = 'Dein Gegner hat aufgegeben!';
+    }
+    else if (this.game.winner === this.game.player1) {
+      turnElement.innerText = 'Du hast gewonnen!';
+    }
+    else if (this.game.winner === this.game.player2 && this.game.turn === this.game.player1) {
+      turnElement.innerText = 'Du hast aufgegeben!';
+    }
+    else if (this.game.winner === this.game.player2) {
+      turnElement.innerText = 'Du hast verloren!';
+    }
+  }
+
+  initTime() {
+    const startDate = new Date(this.game.startedAt),
+          endDate = new Date(this.game.finishedAt);
+    this.element.querySelector('[data-var="time"]').innerText = Html.calcTime(startDate, endDate);
+  }
+
+  calcStatistics(board, player) {
+    let shots = 0,
+        hits = 0,
+        misses = 0,
+        ratio = 0,
+        sunk = 0;
+    for (let x = 0; x < 10; x++) {
+      for (let y = 0; y < 10; y++) {
+        if (board.board[x][y] === 'MISS') {
+          shots++;
+          misses++;
+        }
+        else if (board.board[x][y] === 'HIT') {
+          shots++;
+          hits++;
+        }
+        else if (board.board[x][y] === 'SUNK') {
+          shots++;
+          hits++;
+        }
+      }
+    }
+    if (shots > 0) ratio = Math.round(hits * 100 / shots);
+    for (let i = 0; i < board.ships.length; i++) {
+      if (board.ships[i].sunk) sunk++;
+    }
+    this.element.querySelector(`[data-var="shots${player}"]`).innerText = shots;
+    this.element.querySelector(`[data-var="hits${player}"]`).innerText = hits;
+    this.element.querySelector(`[data-var="misses${player}"]`).innerText = misses;
+    this.element.querySelector(`[data-var="ratio${player}"]`).innerText = ratio + '%';
+    this.element.querySelector(`[data-var="sunk${player}"]`).innerText = sunk;
+  }
+
+
+
+  index() {
+    Html.loadSection('home');
+  }
+
+}
+
+/**
  * Initialize the sections that are currently on the page
  */
 (function() {
@@ -1171,7 +1322,8 @@ class Game extends Section {
     'Signup': Signup,
     'Setup': Setup,
     'Presetup': Presetup,
-    'Game': Game
+    'Game': Game,
+    'Archive': Archive
   }
 
   let activeSections = [];
@@ -1186,10 +1338,15 @@ class Game extends Section {
       const sectionName = section.getAttribute('data-section'),
             sectionClass = availableSections[sectionName];
       if (sectionClass) {
-        activeSections.push(new sectionClass(section));
+        try {
+          activeSections.push(new sectionClass(section));
+        }
+        catch (e) {
+          console.error(e);
+        }
       }
       else {
-        console.warn('Unknow section: ' + sectionName);
+        console.warn('Unknown section: ' + sectionName);
       }
     });
   };

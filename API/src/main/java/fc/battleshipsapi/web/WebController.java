@@ -64,4 +64,11 @@ public class WebController {
         modelAndView.setViewName("game");
         return modelAndView;
     }
+
+    @GetMapping("/web/archive")
+    public ModelAndView archive() {
+        ModelAndView modelAndView = new ModelAndView();
+        modelAndView.setViewName("archive");
+        return modelAndView;
+    }
 }

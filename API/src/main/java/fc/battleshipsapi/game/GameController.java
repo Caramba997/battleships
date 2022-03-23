@@ -25,6 +25,13 @@ public class GameController {
         return ResponseEntity.ok(game);
     }
 
+    @PostMapping("/getArchived")
+    public ResponseEntity<?> getArchived(@Valid @RequestBody IdRequest request) {
+        Game game = gameService.getArchived(request);
+        if (game == null) return ResponseEntity.badRequest().body("No game found for given id");
+        return ResponseEntity.ok(game);
+    }
+
     @PostMapping("/shoot")
     public ResponseEntity<?> shoot(@Valid @RequestBody ShootRequest request) {
         Game game = gameService.shoot(request);

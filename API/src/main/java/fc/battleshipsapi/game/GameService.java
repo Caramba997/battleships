@@ -1,5 +1,7 @@
 package fc.battleshipsapi.game;
 
+import fc.battleshipsapi.ki.KIProperties;
+import fc.battleshipsapi.ki.KIService;
 import fc.battleshipsapi.player.Player;
 import fc.battleshipsapi.player.PlayerService;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +24,9 @@ public class GameService {
     @Autowired
     private PlayerService playerService;
 
+    @Autowired
+    private KIService kiService;
+
     public void save(Game game) {
         gameRepository.save(game);
     }
@@ -34,6 +39,11 @@ public class GameService {
             if (game.getId().equals(request.getId())) {
                 Optional<Game> optional = gameRepository.findById(game.getId());
                 if (optional.isPresent()) active = optional.get();
+                String enemy = player.getUsername().equals(active.getPlayer1()) ? active.getPlayer2() : active.getPlayer1();
+                if (active.getState().equals(State.STARTED) && enemy.equals(KIProperties.USERNAME) && active.getTurn().equals(KIProperties.USERNAME)) {
+                    kiService.makeMove(active);
+                    active.setTurn(game.getPlayer1());
+                }
                 active = finalizeGame(active, player, null);
                 break;
             }
@@ -53,6 +63,19 @@ public class GameService {
             }
         }
         return active;
+    }
+
+    public Game getArchived(IdRequest request) {
+        Player player = playerService.getPlayerFromAuth();
+        if (player == null) return null;
+        Game archived = null;
+        for (Game game: player.getArchiveGames()) {
+            if (game.getId().equals(request.getId())) {
+                archived = game;
+                break;
+            }
+        }
+        return archived;
     }
 
     public Game shoot(ShootRequest request) {
@@ -112,6 +135,7 @@ public class GameService {
         if (game.getState().equals(State.FINISHED) || game.getState().equals(State.CANCELLED)) return null;
         game.setState(State.CANCELLED);
         game.setWinner(player.getUsername().equals(game.getPlayer1()) ? game.getPlayer2() : game.getPlayer1());
+        game.setFinishedAt(ZonedDateTime.now(ZoneId.of("Europe/Paris")));
         return finalizeGame(game, player, null);
     }
 
@@ -127,6 +151,7 @@ public class GameService {
         if (allSunk) {
             game.setState(State.FINISHED);
             game.setWinner(game.getPlayer2());
+            if (game.getPlayer2().equals(KIProperties.USERNAME)) game.setTurn(game.getPlayer2());
             game.setFinishedAt(ZonedDateTime.now(ZoneId.of("Europe/Paris")));
         }
         allSunk = true;
@@ -156,7 +181,9 @@ public class GameService {
                 enemyFixed = playerService.getPlayerByUsername(game.getPlayer1());
             }
         }
-        modifyGameForPlayer(game, enemyFixed);
+        if (!enemyFixed.getId().equals(KIProperties.ID)) {
+            modifyGameForPlayer(game, enemyFixed);
+        }
         return playerGame;
     }
 
@@ -178,7 +205,6 @@ public class GameService {
             modifiedGame.setPlayer1(modifiedGame.getPlayer2());
             modifiedGame.setPlayer2(player2);
         }
-        ZonedDateTime zn = ZonedDateTime.now(ZoneId.of("Europe/Paris"));
         Game oldGame = null;
         for (Game activeGame: player.getActiveGames()) {
             if (activeGame.getId().equals(game.getId())) {
@@ -189,7 +215,12 @@ public class GameService {
         if (oldGame != null) {
             player.getActiveGames().remove(oldGame);
         }
-        player.getActiveGames().add(modifiedGame);
+        if (modifiedGame.getState().equals(State.FINISHED) || modifiedGame.getState().equals(State.CANCELLED)) {
+            player.getArchiveGames().add(modifiedGame);
+        }
+        else {
+            player.getActiveGames().add(modifiedGame);
+        }
         playerService.save(player);
         return modifiedGame;
     }

@@ -34,4 +34,12 @@ public class Ship {
         this.sunk = false;
     }
 
+    public Ship(Ship ship) {
+        this.name = ship.getName();
+        this.length = ship.getLength();
+        this.direction = ship.getDirection();
+        this.coordinates = ship.getCoordinates();
+        this.sunk = ship.isSunk();
+    }
+
 }
