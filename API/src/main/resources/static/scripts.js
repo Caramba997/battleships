@@ -560,6 +560,7 @@ class Home extends Section {
   }
 
   rematchPossible(player) {
+    if (player === 'KI-Gegner') return false;
     const openRequests = this.player.openRequests;
     for (let i = 0; i < openRequests.length; i++) {
       if (openRequests[i].challenger === player) {
