@@ -29,14 +29,14 @@ class API {
   static defaults = {
     // apiHost: 'http://192.168.178.61:8080',
     // htmlHost: 'http://192.168.178.61:5500',
-    // apiHost: 'http://localhost:8080',
-    // htmlHost: 'http://localhost:5500',
-    // htmlPrefix: '/',
-    // htmlSuffix: '.html',
-    apiHost: 'https://fc-battleships.herokuapp.com',
-    htmlHost: 'https://fc-battleships.herokuapp.com',
-    htmlPrefix: '/web/',
-    htmlSuffix: '',
+    apiHost: 'http://localhost:8080',
+    htmlHost: 'http://localhost:5500',
+    htmlPrefix: '/',
+    htmlSuffix: '.html',
+    // apiHost: 'https://fc-battleships.herokuapp.com',
+    // htmlHost: 'https://fc-battleships.herokuapp.com',
+    // htmlPrefix: '/web/',
+    // htmlSuffix: '',
     version: 'v1.3',
     headers: {
       'Content-Type': 'application/json'
@@ -1225,11 +1225,23 @@ class Game extends Section {
  */
 class Archive extends Section {
 
+  retries = 10;
+
   async init() {
     console.info('Init Archive Section');
     this.id = Cookies.get('currentGame');
     const game = await API.post('/api/games/getArchived', { id: this.id }, true);
-    if (!game) return;
+    if (!game) {
+      console.info('Retry fetching archived game');
+      this.retries--;
+      if (this.retries < 0) {
+        console.error('Retrieving archived game failed');
+        Html.loadSection('home');
+        return;
+      }
+      window.setTimeout(this.init.bind(this), 1000)
+      return;
+    }
     this.game = game;
     this.player1Element = this.element.querySelector('.board[data-player="1"]');
     this.player2Element = this.element.querySelector('.board[data-player="2"]');

@@ -77,6 +77,16 @@ public class PlayerService implements UserDetailsService {
 
     public Player refreshPlayer() {
         Player player = getPlayerFromAuth();
+        if (player == null) return null;
+        List<Game> finishedGames = new ArrayList<>();
+        for (Game game: player.getActiveGames()) {
+            if (game.getState().equals(State.FINISHED) || game.getState().equals(State.CANCELLED)) {
+                finishedGames.add(game);
+            }
+        }
+        for (Game finishedGame: finishedGames) {
+            player.getActiveGames().remove(finishedGame);
+        }
         return player;
     }
 

@@ -1225,11 +1225,23 @@ class Game extends Section {
  */
 class Archive extends Section {
 
+  retries = 10;
+
   async init() {
     console.info('Init Archive Section');
     this.id = Cookies.get('currentGame');
     const game = await API.post('/api/games/getArchived', { id: this.id }, true);
-    if (!game) return;
+    if (!game) {
+      console.info('Retry fetching archived game');
+      this.retries--;
+      if (this.retries < 0) {
+        console.error('Retrieving archived game failed');
+        Html.loadSection('home');
+        return;
+      }
+      window.setTimeout(this.init.bind(this), 1000)
+      return;
+    }
     this.game = game;
     this.player1Element = this.element.querySelector('.board[data-player="1"]');
     this.player2Element = this.element.querySelector('.board[data-player="2"]');

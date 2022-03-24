@@ -14,7 +14,7 @@ import java.util.function.Function;
 @Service
 public class JwtUtil {
 
-    public static final int TOKEN_EXPIRATION = 1000 * 60 * 60 * 24; // 24 hours
+    public static final int TOKEN_EXPIRATION = 1000 * 60 * 60 * 24 * 7; // 7 days
 
     private String SECRET_KEY = "secret";
 

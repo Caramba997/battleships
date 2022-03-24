@@ -218,9 +218,7 @@ public class GameService {
         if (modifiedGame.getState().equals(State.FINISHED) || modifiedGame.getState().equals(State.CANCELLED)) {
             player.getArchiveGames().add(modifiedGame);
         }
-        else {
-            player.getActiveGames().add(modifiedGame);
-        }
+        player.getActiveGames().add(modifiedGame);
         playerService.save(player);
         return modifiedGame;
     }
