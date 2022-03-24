@@ -87,6 +87,7 @@ public class PlayerService implements UserDetailsService {
         for (Game finishedGame: finishedGames) {
             player.getActiveGames().remove(finishedGame);
         }
+        save(player);
         return player;
     }
 
